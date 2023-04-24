@@ -1,6 +1,24 @@
 #!/usr/bin/python
 import argparse as ap
 
+def fileCheck(IP_ADDRESS:str, ??? ):
+    #function should return list of files that have been modified in last 3 weeks - also it should loop through them and print them out to console
+    #Im not sure what args are needed for this function so just fill them in as you go
+
+def emailRecipient(senderEmail:str, recipientEmail:str, ctoBoolean):
+    #function should email a "cute" email to the user and request the sender email password to send email
+    #ctoBoolean will be true if -c was specified on start
+
+def downloadFiles(fileList, fileLocation):
+    #function should download files to a folder if this option was called if fileLocation is null or "" then should be downloaded to "Quarentine File" in home directory.
+
+def ipValidation(input):
+    pass
+    #returns boolean value
+
+def emailValidation(input):
+    pass
+    #return boolean value 
 
 def get_parser():
     #initial argument parser to define basic info about command
