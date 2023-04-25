@@ -1,9 +1,23 @@
 #!/usr/bin/python
 import argparse as ap
+from ftplib import FTP
 
 def fileCheck(IP_ADDRESS:str, ??? ):
     #function should return list of files that have been modified in last 3 weeks - also it should loop through them and print them out to console
     #Im not sure what args are needed for this function so just fill them in as you go
+    ftpserver = FTP(IP_ADDRESS)
+    
+    ftpServer.login() #Need to get username and password of the user to login
+    
+    ftpServer.cwd('~')
+    ftpFiles = ftpServer.nlst()
+    #Get list of files to check through
+    for f in ftpfiles:
+        #if f's modify date is within past three weeks:
+            #Create a list of the file names to add to the email
+            #Print the name and modify date of each file
+        pass
+    return() #Returns list of compromised files
 
 def emailRecipient(senderEmail:str, recipientEmail:str, ctoBoolean):
     #function should email a "cute" email to the user and request the sender email password to send email
@@ -13,6 +27,8 @@ def downloadFiles(fileList, fileLocation):
     #function should download files to a folder if this option was called if fileLocation is null or "" then should be downloaded to "Quarentine File" in home directory.
 
 def ipValidation(input):
+    #if input.matches(IP Address Regex)
+        #return true
     pass
     #returns boolean value
 
