@@ -1,22 +1,34 @@
 #!/usr/bin/python
 import argparse as ap
-from ftplib import FTP
+import paramiko
 
-def fileCheck(IP_ADDRESS:str, ??? ):
+def fileCheck(IP_ADDRESS:str, username):
     #function should return list of files that have been modified in last 3 weeks - also it should loop through them and print them out to console
     #Im not sure what args are needed for this function so just fill them in as you go
-    ftpserver = FTP(IP_ADDRESS)
+    host = "localhost"
+    port = 22
     
-    ftpServer.login() #Need to get username and password of the user to login
+     #Need to get username and password of the user to login
+    password = input("Enter the password of the compromised user.")
+    command = "find . -mtime -21 -ls"
     
-    ftpServer.cwd('~')
-    ftpFiles = ftpServer.nlst()
+    #Setup SSH connection and run command
+    ssh_client = paramiko.SSHClient()
+    ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh_client.connect(host, port, username, password)
+    
+    stdin, stdout, stderr = ssh_client.exec_command(command)
+    
+    ftpFiles = stdout.readline.decode('utf-8').splitlines()
+    
     #Get list of files to check through
     for f in ftpfiles:
-        #if f's modify date is within past three weeks:
             #Create a list of the file names to add to the email
             #Print the name and modify date of each file
         pass
+    
+    ssh_client.close()
+    
     return() #Returns list of compromised files
 
 def emailRecipient(senderEmail:str, recipientEmail:str, ctoBoolean):
@@ -38,12 +50,13 @@ def emailValidation(input):
 
 def get_parser():
     #initial argument parser to define basic info about command
-    parser = ap.ArgumentParser(prog="NETWORK_MONITOR",usage="./Group3_Final.py SENDER_EMAIL RECIPIENT_EMAIL IP_ADDRESS [-d DIRECTORY_NAME] [-c]", add_help=True)
+    parser = ap.ArgumentParser(prog="NETWORK_MONITOR",usage="./Group3_Final.py SENDER_EMAIL RECIPIENT_EMAIL IP_ADDRESS COMP_USER [-d DIRECTORY_NAME] [-c]", add_help=True)
 
     #Below is mandatory arguments
     parser.add_argument("senderEmail", help="The email address of the sender.")
     parser.add_argument("recipientEmail", help="The email address of the recipient.")
     parser.add_argument("ipAddress", help="The IP address of the compromised machine to be examined.")
+    parser.add_arguement("compromisedUser", help="The username of the user on the compromised machine.")
 
     # Below adds the arguments for the commands defining their basic info such as description and actions
     parser.add_argument("-d", "--download", action="store", dest="DirName",
