@@ -1,15 +1,18 @@
 #!/usr/bin/python
 import argparse as ap
 import paramiko
+import re
 
-def fileCheck(IP_ADDRESS:str, username):
+
+def fileCheck(IP_ADDRESS:str):
     #function should return list of files that have been modified in last 3 weeks - also it should loop through them and print them out to console
     #Im not sure what args are needed for this function so just fill them in as you go
     host = "localhost"
     port = 22
     
      #Need to get username and password of the user to login
-    password = input("Enter the password of the compromised user.")
+    username = input("Enter the username of a user on the compromised machine: ")
+    password = input("Enter the password of the compromised user: ")
     command = "find . -mtime -21 -ls"
     
     #Setup SSH connection and run command
@@ -21,15 +24,23 @@ def fileCheck(IP_ADDRESS:str, username):
     
     ftpFiles = stdout.readline.decode('utf-8').splitlines()
     
+    #Regular Expressions for finding filename and mod date
+    filenameRegex = r" .\b*$"
+    dateRegex = r"[AMJFSN][a-z]{2} \d{1,2} "
+    compedFiles = []
     #Get list of files to check through
+    print("Compromised Files")
+    print("File Name\t\t\tModify Date")
     for f in ftpfiles:
             #Create a list of the file names to add to the email
             #Print the name and modify date of each file
-        pass
+            print(re.search(filenameRegex, f) + "\t\t\t" + re.search(dateRegex, f))
+            compedFiles.append(re.search(filenameRegex, f))
+            #compedFiles should contain the path to the compromised files relative to the home directory.
     
     ssh_client.close()
     
-    return() #Returns list of compromised files
+    return(compedFiles) #Returns list of compromised files
 
 def emailRecipient(senderEmail:str, recipientEmail:str, ctoBoolean):
     #function should email a "cute" email to the user and request the sender email password to send email
@@ -40,8 +51,11 @@ def downloadFiles(fileList, fileLocation):
 
 def ipValidation(input):
     #if input.matches(IP Address Regex)
-        #return true
-    pass
+    regex = r"\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}"
+    if re.match(regex, input):
+        return true
+    else:
+        return false
     #returns boolean value
 
 def emailValidation(input):
@@ -56,7 +70,6 @@ def get_parser():
     parser.add_argument("senderEmail", help="The email address of the sender.")
     parser.add_argument("recipientEmail", help="The email address of the recipient.")
     parser.add_argument("ipAddress", help="The IP address of the compromised machine to be examined.")
-    parser.add_arguement("compromisedUser", help="The username of the user on the compromised machine.")
 
     # Below adds the arguments for the commands defining their basic info such as description and actions
     parser.add_argument("-d", "--download", action="store", dest="DirName",
