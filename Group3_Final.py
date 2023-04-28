@@ -52,7 +52,7 @@ def downloadFiles(fileList, fileLocation):
 
 def ipValidation(input):
     #if input.matches(IP Address Regex)
-    regex = r"\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}"
+    regex = r"^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)){3}$"
     if re.match(regex, input):
         return True
     else:
@@ -60,7 +60,11 @@ def ipValidation(input):
     #returns boolean value
 
 def emailValidation(input):
-    pass
+    regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    if re.fullmatch(regex, input):
+        return True
+    else:
+        return False
     #return boolean value 
 
 def get_parser():
@@ -91,7 +95,10 @@ def main():
         if emailValidation(parserResult.senderEmail):
             if emailValidation(parserResult.recipientEmail):
                 if ipValidation(parserResult.ipAddress):
-                    pass
+                    print("bottom")
+
+
+
             else:
                 print("ERROR: Invalid recipient email")
         else:
