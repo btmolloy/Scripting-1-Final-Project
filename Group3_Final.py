@@ -2,7 +2,6 @@
 import argparse as ap
 import os
 import sys
-
 import paramiko
 import re
 import getpass
