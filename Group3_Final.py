@@ -3,7 +3,6 @@ import argparse as ap
 import paramiko
 import re
 
-
 def fileCheck(IP_ADDRESS:str):
     #function should return list of files that have been modified in last 3 weeks - also it should loop through them and print them out to console
     #Im not sure what args are needed for this function so just fill them in as you go
@@ -45,17 +44,19 @@ def fileCheck(IP_ADDRESS:str):
 def emailRecipient(senderEmail:str, recipientEmail:str, ctoBoolean):
     #function should email a "cute" email to the user and request the sender email password to send email
     #ctoBoolean will be true if -c was specified on start
+    pass
 
 def downloadFiles(fileList, fileLocation):
     #function should download files to a folder if this option was called if fileLocation is null or "" then should be downloaded to "Quarentine File" in home directory.
+    pass
 
 def ipValidation(input):
     #if input.matches(IP Address Regex)
     regex = r"\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}"
     if re.match(regex, input):
-        return true
+        return True
     else:
-        return false
+        return False
     #returns boolean value
 
 def emailValidation(input):
@@ -87,12 +88,14 @@ def main():
     try:
         parserResult = mpsr.parse_args()
 
-        if parserResult.senderEmail is not None:
-            pass
-        if parserResult.senderEmail is not None:
-            pass
-        if parserResult.booleanAttachCTO:
-            pass
+        if emailValidation(parserResult.senderEmail):
+            if emailValidation(parserResult.recipientEmail):
+                if ipValidation(parserResult.ipAddress):
+                    pass
+            else:
+                print("ERROR: Invalid recipient email")
+        else:
+            print("ERROR: Invalid sender email")
 
     #except method used to catch errors
     except Exception as ex:
