@@ -1,14 +1,22 @@
 #!/usr/bin/python
 import argparse as ap
 import os
+import smtplib
+import ssl
 import sys
 import paramiko
 import re
 import getpass
+from smtplib import SMTP_SSL
+from ssl import create_default_context
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+from email import encoders
 
 
 # function should return list of files that have been modified in last 3 weeks - also it should loop through them and print them out to console
-def fileCheck(IP_ADDRESS:str) -> list[str]:
+def fileCheck(IP_ADDRESS: str) -> list[str]:
     masterList = []
     port = 22
     command = 'find ~ -type f -not -path \'*/\.*\' -mtime -21 -printf "%TY-%Tm-%Td\\t%k\\t%p\\n" | sort -n -k 2 | cut -f 1,3-'
@@ -19,7 +27,7 @@ def fileCheck(IP_ADDRESS:str) -> list[str]:
     masterList.append(password)
 
     try:
-        #Setup SSH connection
+        # Setup SSH connection
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
@@ -36,7 +44,8 @@ def fileCheck(IP_ADDRESS:str) -> list[str]:
             masterList.append(line)
 
         if len(masterList) < 3:
-            print("EXIT CODE: No compromised files found. There are no files that have been modified within the past 3 weeks.")
+            print(
+                "EXIT CODE: No compromised files found. There are no files that have been modified within the past 3 weeks.")
             sys.exit(0)
             ssh_client.close()
 
@@ -61,22 +70,102 @@ def fileCheck(IP_ADDRESS:str) -> list[str]:
             masterList[counter] = item
         counter += 1
 
-    return(masterList)
+    return (masterList)
 
-def emailRecipient(senderEmail:str, recipientEmail:str, ctoBoolean):
-    #function should email a "cute" email to the user and request the sender email password to send email
-    #ctoBoolean will be true if -c was specified on start
-    pass
+
+def emailSendOff(fileList, fileSource, senderEmail: str, recipientEmail: str, ctoBoolean, IP_ADDRESS):
+    sendPass = getpass.getpass("Enter sender email password: ")
+    #sendPass = "studenttest"
+
+    if ctoBoolean:
+        names = "Chief Technology Officer and Others"
+    else:
+        names = "All"
+    if ctoBoolean:
+        recipientEmail = recipientEmail + ", cit383.testmail@gmail.com"
+    location = "/home/" + fileList[0]
+    allFiles = []
+    skipCounter = 1
+    for x in fileList:
+        allFiles = x + "\n"
+        skipCounter += 1
+    if fileSource == "":
+        attachPath = os.path.expanduser("~") + "/COMPROMISED_FILE_" + (fileList[2].split("/"))[-1]
+    else:
+        attachPath = fileSource + "/COMPROMISED_FILE_" + (fileList[2].split("/"))[-1]
+
+    emailContent = MIMEMultipart("mixed")
+    emailContent['Subject'] = "IMPORTANT - COMPROMISED USER"
+    emailContent['From'] = senderEmail
+    emailContent['To'] = recipientEmail
+
+    body = f"""
+    Hello {names},\n
+    \n
+    It has been found that user '{fileList[0]}' on host '{IP_ADDRESS}' was compromised as files with in the '{location}' have been modified within the past 3 weeks.\n 
+    \n
+    Relevant Information to this breach:\n
+        IP ADDRESS: {IP_ADDRESS}\n
+        USER: {fileList[0]}\n
+        PASSWORD: {fileList[1]}\n
+        AMOUNT OF FILES: {len(fileList) - 2}\n
+    \n
+    The following is a list of all compromised files:\n 
+    {allFiles}\n
+    \n
+    Attached to this email is the smallest file found that was compromised.\n
+    \n
+    Sincerely,\n
+    \n
+    Script
+    """
+
+    emailBody = MIMEText(body, "plain")
+    emailContent.attach(emailBody)
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 465
+
+    try:
+        with open(attachPath, "rb") as attachment:
+            p = MIMEApplication(attachment.read(), _subtype=(fileList[2].split("."))[-1])
+            p.add_header('Content-Disposition', f"attachment; filename={attachPath}")
+            emailContent.attach(p)
+    except Exception as ex:
+        print(str(ex))
+
+    msg_full = emailContent.as_string()
+    context = ssl.create_default_context()
+
+    print("before with")
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.ehlo()
+        server.starttls(context=context)
+        server.ehlo()
+        print("before login")
+        try:
+            server.login(senderEmail, sendPass)
+        except:
+            print("ERROR: Incorrect login credentials.")
+            server.quit()
+            exit(0)
+        try:
+            server.sendmail(senderEmail, recipientEmail, msg_full)
+        except:
+            print("ERROR: Unable to send email after signing in.")
+            server.quit()
+            exit(0)
+        server.quit()
+        print("\nSuccessfully sent email!")
 
 def downloadFiles(fileList, fileLocation, host, port):
     try:
-        #Below creates the sftp connection to the client
+        # Below creates the sftp connection to the client
         sshPipe = paramiko.Transport(host, port)
         sshPipe.connect(username=fileList[0], password=fileList[1])
 
         sftp = paramiko.SFTPClient.from_transport(sshPipe)
 
-        #if the remote path exists continue
+        # if the remote path exists continue
         if sftp.stat(fileList[2]):
             newFileName = "/COMPROMISED_FILE_" + (fileList[2].split("/"))[-1]
 
@@ -92,10 +181,10 @@ def downloadFiles(fileList, fileLocation, host, port):
                 sftp.close()
                 exit(0)
 
-            #once done copying sftp connection is closed and a message is printed regarding the action.
+            # once done copying sftp connection is closed and a message is printed regarding the action.
             sftp.close()
             print("File successfully downloaded")
-        #if the remote path doesnt exist, print error and end gracefully
+        # if the remote path doesnt exist, print error and end gracefully
         else:
             print("Error: Issue finding file on client")
             sftp.close()
@@ -114,6 +203,7 @@ def ipValidation(input):
     else:
         return False
 
+
 def emailValidation(input):
     regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     if re.fullmatch(regex, input):
@@ -121,11 +211,14 @@ def emailValidation(input):
     else:
         return False
 
-def get_parser():
-    #initial argument parser to define basic info about command
-    parser = ap.ArgumentParser(prog="NETWORK_MONITOR",usage="./Group3_Final.py SENDER_EMAIL RECIPIENT_EMAIL IP_ADDRESS COMP_USER [-d DIRECTORY_NAME] [-c]", add_help=True)
 
-    #Below is mandatory arguments
+def get_parser():
+    # initial argument parser to define basic info about command
+    parser = ap.ArgumentParser(prog="NETWORK_MONITOR",
+                               usage="./Group3_Final.py SENDER_EMAIL RECIPIENT_EMAIL IP_ADDRESS COMP_USER [-d DIRECTORY_NAME] [-c]",
+                               add_help=True)
+
+    # Below is mandatory arguments
     parser.add_argument("senderEmail", help="The email address of the sender.")
     parser.add_argument("recipientEmail", help="The email address of the recipient.")
     parser.add_argument("ipAddress", help="The IP address of the compromised machine to be examined.")
@@ -138,11 +231,12 @@ def get_parser():
 
     return parser
 
-#below is main method to process the input
+
+# below is main method to process the input
 def main():
     downloadLocation = ""
     mpsr = get_parser()
-    #try except is created for error handling
+    # try except is created for error handling
     try:
         parserResult = mpsr.parse_args()
         if emailValidation(parserResult.senderEmail):
@@ -162,6 +256,8 @@ def main():
                                 exit(0)
 
                         downloadFiles(compFiles, downloadLocation, parserResult.ipAddress, 22)
+                        emailSendOff(compFiles, downloadLocation, parserResult.senderEmail, parserResult.recipientEmail,
+                                     parserResult.booleanAttachCTO, parserResult.ipAddress)
 
                     except Exception as ex:
                         print(ex)
@@ -172,10 +268,11 @@ def main():
         else:
             print("ERROR: Invalid sender email")
 
-    #except method used to catch errors
+    # except method used to catch errors
     except Exception as ex:
         print(ex)
 
-#below is configured so that script can be imported elsewhere and main wont run
+
+# below is configured so that script can be imported elsewhere and main wont run
 if __name__ == "__main__":
     main()
