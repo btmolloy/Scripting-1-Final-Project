@@ -69,13 +69,12 @@ def fileCheck(IP_ADDRESS: str) -> list[str]:
         else:
             masterList[counter] = item
         counter += 1
-
     return (masterList)
 
 
 def emailSendOff(fileList, fileSource, senderEmail: str, recipientEmail: str, ctoBoolean, IP_ADDRESS):
-    sendPass = getpass.getpass("Enter sender email password: ")
-    #sendPass = "studenttest"
+    sendPass = getpass.getpass("Enter email sender password: ")
+    #sendPass = "fgknwqfsbpzdpuyg"
 
     if ctoBoolean:
         names = "Chief Technology Officer and Others"
@@ -84,10 +83,11 @@ def emailSendOff(fileList, fileSource, senderEmail: str, recipientEmail: str, ct
     if ctoBoolean:
         recipientEmail = recipientEmail + ", cit383.testmail@gmail.com"
     location = "/home/" + fileList[0]
-    allFiles = []
     skipCounter = 1
+    allFiles = ""
     for x in fileList:
-        allFiles = x + "\n"
+        if skipCounter > 2:
+            allFiles = allFiles + "\t" + x + "\n"
         skipCounter += 1
     if fileSource == "":
         attachPath = os.path.expanduser("~") + "/COMPROMISED_FILE_" + (fileList[2].split("/"))[-1]
@@ -100,35 +100,36 @@ def emailSendOff(fileList, fileSource, senderEmail: str, recipientEmail: str, ct
     emailContent['To'] = recipientEmail
 
     body = f"""
-    Hello {names},\n
-    \n
-    It has been found that user '{fileList[0]}' on host '{IP_ADDRESS}' was compromised as files with in the '{location}' have been modified within the past 3 weeks.\n 
-    \n
-    Relevant Information to this breach:\n
-        IP ADDRESS: {IP_ADDRESS}\n
-        USER: {fileList[0]}\n
-        PASSWORD: {fileList[1]}\n
-        AMOUNT OF FILES: {len(fileList) - 2}\n
-    \n
-    The following is a list of all compromised files:\n 
-    {allFiles}\n
-    \n
-    Attached to this email is the smallest file found that was compromised.\n
-    \n
-    Sincerely,\n
-    \n
-    Script
-    """
+Hello {names},
+    
+It has been found that the user '{fileList[0]}' on host '{IP_ADDRESS}' was compromised! This was discovered as files within the directory '{location}' were found to have been modified within the past 3 weeks.
+
+Relevant information to this breach:
+    IP ADDRESS: {IP_ADDRESS}\n
+    USER: {fileList[0]}\n
+    PASSWORD: {fileList[1]}\n
+    AMOUNT OF FILES: {len(fileList) - 2}
+    
+The following is a list of all compromised files: 
+{allFiles}
+    
+Attached to this email is the smallest file found that was compromised.
+    
+Sincerely,
+    
+Script
+"""
 
     emailBody = MIMEText(body, "plain")
     emailContent.attach(emailBody)
     smtp_server = "smtp.gmail.com"
-    smtp_port = 465
+    smtp_port = 587
+    filename = "COMPROMISED_FILE_" + (fileList[2].split("/"))[-1]
 
     try:
         with open(attachPath, "rb") as attachment:
             p = MIMEApplication(attachment.read(), _subtype=(fileList[2].split("."))[-1])
-            p.add_header('Content-Disposition', f"attachment; filename={attachPath}")
+            p.add_header('Content-Disposition', f"attachment; filename={filename}")
             emailContent.attach(p)
     except Exception as ex:
         print(str(ex))
@@ -136,12 +137,10 @@ def emailSendOff(fileList, fileSource, senderEmail: str, recipientEmail: str, ct
     msg_full = emailContent.as_string()
     context = ssl.create_default_context()
 
-    print("before with")
     with smtplib.SMTP(smtp_server, smtp_port) as server:
         server.ehlo()
         server.starttls(context=context)
         server.ehlo()
-        print("before login")
         try:
             server.login(senderEmail, sendPass)
         except:
@@ -155,7 +154,7 @@ def emailSendOff(fileList, fileSource, senderEmail: str, recipientEmail: str, ct
             server.quit()
             exit(0)
         server.quit()
-        print("\nSuccessfully sent email!")
+        print("Successfully sent email!")
 
 def downloadFiles(fileList, fileLocation, host, port):
     try:
@@ -243,7 +242,6 @@ def main():
             if emailValidation(parserResult.recipientEmail):
                 if ipValidation(parserResult.ipAddress):
                     try:
-                        compFiles = fileCheck(parserResult.ipAddress)
                         if parserResult.DirName is not None:
                             if os.path.exists(parserResult.DirName):
                                 if os.path.isdir(parserResult.DirName):
@@ -254,7 +252,7 @@ def main():
                             else:
                                 print("ERROR: Inputted -d path does not exist")
                                 exit(0)
-
+                        compFiles = fileCheck(parserResult.ipAddress)
                         downloadFiles(compFiles, downloadLocation, parserResult.ipAddress, 22)
                         emailSendOff(compFiles, downloadLocation, parserResult.senderEmail, parserResult.recipientEmail,
                                      parserResult.booleanAttachCTO, parserResult.ipAddress)
