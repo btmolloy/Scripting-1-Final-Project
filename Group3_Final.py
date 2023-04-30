@@ -13,14 +13,15 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from email import encoders
-
+#import modules
 
 # function should return list of files that have been modified in last 3 weeks - also it should loop through them and print them out to console
 def fileCheck(IP_ADDRESS: str) -> list[str]:
+    #Variables for list of files, port number, and command for finding modified files.
     masterList = []
     port = 22
     command = 'find ~ -type f -not -path \'*/\.*\' -mtime -21 -printf "%TY-%Tm-%Td\\t%k\\t%p\\n" | sort -n -k 2 | cut -f 1,3-'
-
+    #Obtains the username and password and adds them to the masterlist
     username = input("Enter the username of a user on the compromised machine: ")
     masterList.append(username)
     password = getpass.getpass("Enter the password of the compromised user: ")
@@ -30,19 +31,20 @@ def fileCheck(IP_ADDRESS: str) -> list[str]:
         # Setup SSH connection
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        #Try ssh connection, if it fails close it and print the error.
         try:
             ssh_client.connect(IP_ADDRESS, port, username=username, password=password)
         except:
             print("ERROR: Invalid Credentials")
             exit(999)
             ssh_client.close()
-
+        #Setup ssh command
         stdin, stdout, stderr = ssh_client.exec_command(command)
-
+        #Parse through command output and add the filenames to the masterlist
         for line in stdout.readlines():
             line = line.strip()
             masterList.append(line)
-
+        #If no files were found, present error
         if len(masterList) < 3:
             print(
                 "EXIT CODE: No compromised files found. There are no files that have been modified within the past 3 weeks.")
@@ -52,6 +54,7 @@ def fileCheck(IP_ADDRESS: str) -> list[str]:
         ssh_client.close()
     except Exception as ex:
         print(ex)
+    #Iterates through the command output and prints the mod date and file name
     counter = 0
     print("%-25s %10s" % ("Last Modified Date", "File Name"))
     print("-------------------------------------------")
@@ -60,7 +63,7 @@ def fileCheck(IP_ADDRESS: str) -> list[str]:
         if counter > 2:
             print(line)
     print(" ")
-
+    #Separates the modified date and filename in the masterlist
     counter = 0
     for item in masterList:
         if counter > 1:
@@ -75,7 +78,7 @@ def fileCheck(IP_ADDRESS: str) -> list[str]:
 def emailSendOff(fileList, fileSource, senderEmail: str, recipientEmail: str, ctoBoolean, IP_ADDRESS):
     sendPass = getpass.getpass("Enter email sender password: ")
     #sendPass = "fgknwqfsbpzdpuyg"
-
+    #sets up email variables
     if ctoBoolean:
         names = "Chief Technology Officer and Others"
     else:
@@ -83,6 +86,7 @@ def emailSendOff(fileList, fileSource, senderEmail: str, recipientEmail: str, ct
     if ctoBoolean:
         recipientEmail = recipientEmail + ", cit383.testmail@gmail.com"
     location = "/home/" + fileList[0]
+    #Finds smallest file to attach it to the email
     skipCounter = 1
     allFiles = ""
     for x in fileList:
@@ -93,12 +97,12 @@ def emailSendOff(fileList, fileSource, senderEmail: str, recipientEmail: str, ct
         attachPath = os.path.expanduser("~") + "/COMPROMISED_FILE_" + (fileList[2].split("/"))[-1]
     else:
         attachPath = fileSource + "/COMPROMISED_FILE_" + (fileList[2].split("/"))[-1]
-
+    #Begins email and sets it up with recipient, subject, and sender
     emailContent = MIMEMultipart("mixed")
     emailContent['Subject'] = "IMPORTANT - COMPROMISED USER"
     emailContent['From'] = senderEmail
     emailContent['To'] = recipientEmail
-
+    #Writes email including CTO, files, etc.
     body = f"""
 Hello {names},
     
@@ -119,13 +123,13 @@ Sincerely,
     
 Script
 """
-
+    #Completes email setup by attaching the body as text. Sends through port and server.
     emailBody = MIMEText(body, "plain")
     emailContent.attach(emailBody)
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
     filename = "COMPROMISED_FILE_" + (fileList[2].split("/"))[-1]
-
+    #Attaches smallest affected file to the email
     try:
         with open(attachPath, "rb") as attachment:
             p = MIMEApplication(attachment.read(), _subtype=(fileList[2].split("."))[-1])
@@ -136,7 +140,7 @@ Script
 
     msg_full = emailContent.as_string()
     context = ssl.create_default_context()
-
+    #Sends the email and closes the server connection
     with smtplib.SMTP(smtp_server, smtp_port) as server:
         server.ehlo()
         server.starttls(context=context)
@@ -155,7 +159,7 @@ Script
             exit(0)
         server.quit()
         print("Successfully sent email!")
-
+#Downloads the smallest affected file to the quarantine folder.
 def downloadFiles(fileList, fileLocation, host, port):
     try:
         # Below creates the sftp connection to the client
@@ -167,7 +171,7 @@ def downloadFiles(fileList, fileLocation, host, port):
         # if the remote path exists continue
         if sftp.stat(fileList[2]):
             newFileName = "/COMPROMISED_FILE_" + (fileList[2].split("/"))[-1]
-
+            #If file location is "", create the variable for the path to the file with the users home file
             if fileLocation == "":
                 localFile = os.path.expanduser("~") + newFileName
             else:
@@ -193,7 +197,7 @@ def downloadFiles(fileList, fileLocation, host, port):
     except Exception as ex:
         print(ex)
 
-
+#Ensure that IP address is valid and return a boolean value
 def ipValidation(input):
     regex = r"^(?!0\.0\.0\.0)(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-4]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
 
@@ -202,7 +206,7 @@ def ipValidation(input):
     else:
         return False
 
-
+#Ensure the email address is valid and return a boolean value
 def emailValidation(input):
     regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     if re.fullmatch(regex, input):
